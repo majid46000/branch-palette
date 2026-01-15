@@ -3,30 +3,30 @@ import { useParams, Navigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import Layout from "@/components/Layout";
 import Breadcrumb from "@/components/Breadcrumb";
-import SpecialtyCard from "@/components/SpecialtyCard";
-import { getBranchById, generateSpecialties } from "@/data/branches";
+import CategoryCard from "@/components/CategoryCard";
+import { getBranchById, getCategoriesForBranch } from "@/data/directory";
 import { Input } from "@/components/ui/input";
 import { 
-  Cpu, Heart, DollarSign, GraduationCap, Factory,
-  ShoppingBag, Truck, Zap, Leaf, Building2,
-  Film, Hotel, Scale, Megaphone, Home,
-  Wifi, Plane, Car, Dna, Shield,
-  BarChart3, ShoppingCart, Recycle, Shirt, Coffee,
-  Gamepad2, Landmark, Users, Umbrella, Package,
-  Tv, HandHeart, Pill, Briefcase, BookOpen,
-  Microscope, Lock, Share2, Trophy, Sparkles,
+  Brain, Code, Smartphone, Cloud, Shield,
+  BarChart3, GitBranch, Blocks, Cpu, Gamepad2,
+  ShoppingCart, Megaphone, Palette, Zap, MessageCircle,
+  DollarSign, Heart, GraduationCap, Users, Scale,
+  Building2, Plane, UtensilsCrossed, Share2, Film,
+  Music, Video, Camera, PenTool, Search as SearchIcon,
+  Kanban, UserCheck, Headphones, Bot, Wand2,
+  Plug, TestTube, FileText, GitFork, Server,
   Folder
 } from "lucide-react";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Cpu, Heart, DollarSign, GraduationCap, Factory,
-  ShoppingBag, Truck, Zap, Leaf, Building2,
-  Film, Hotel, Scale, Megaphone, Home,
-  Wifi, Plane, Car, Dna, Shield,
-  BarChart3, ShoppingCart, Recycle, Shirt, Coffee,
-  Gamepad2, Landmark, Users, Umbrella, Package,
-  Tv, HandHeart, Pill, Briefcase, BookOpen,
-  Microscope, Lock, Share2, Trophy, Sparkles,
+  Brain, Code, Smartphone, Cloud, Shield,
+  BarChart3, GitBranch, Blocks, Cpu, Gamepad2,
+  ShoppingCart, Megaphone, Palette, Zap, MessageCircle,
+  DollarSign, Heart, GraduationCap, Users, Scale,
+  Building2, Plane, UtensilsCrossed, Share2, Film,
+  Music, Video, Camera, PenTool, Search: SearchIcon,
+  Kanban, UserCheck, Headphones, Bot, Wand2,
+  Plug, TestTube, FileText, GitFork, Server,
   Folder
 };
 
@@ -40,13 +40,14 @@ const BranchPage = () => {
     return <Navigate to="/" replace />;
   }
   
-  const specialties = generateSpecialties(branch.id, branch.name);
-  const filteredSpecialties = specialties.filter(specialty =>
-    specialty.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    specialty.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const categories = getCategoriesForBranch(branch.id);
+  const filteredCategories = categories.filter(category =>
+    category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    category.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const IconComponent = iconMap[branch.icon] || Folder;
+  const totalSites = categories.reduce((sum, cat) => sum + cat.siteCount, 0);
 
   return (
     <Layout>
@@ -68,7 +69,7 @@ const BranchPage = () => {
                 {branch.description}
               </p>
               <p className="text-sm text-muted-foreground mt-2">
-                {specialties.length} specialties available
+                {categories.length} categories • {totalSites} sites
               </p>
             </div>
           </div>
@@ -78,7 +79,7 @@ const BranchPage = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search specialties..."
+              placeholder="Search categories..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 h-11"
@@ -87,24 +88,31 @@ const BranchPage = () => {
         </div>
       </section>
 
-      {/* Specialties Grid */}
+      {/* Categories Grid */}
       <section className="container py-10 md:py-12">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold">Specialties</h2>
+          <h2 className="text-lg font-semibold">Categories</h2>
           <span className="text-sm text-muted-foreground">
-            {filteredSpecialties.length} of {specialties.length}
+            {filteredCategories.length} of {categories.length}
           </span>
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredSpecialties.map((specialty, index) => (
-            <SpecialtyCard key={specialty.id} specialty={specialty} index={index} />
+          {filteredCategories.map((category, index) => (
+            <CategoryCard 
+              key={category.id} 
+              category={category} 
+              branchId={branch.id}
+              index={index}
+              layoutVariant={category.layoutVariant}
+              styleVariant={category.styleVariant}
+            />
           ))}
         </div>
 
-        {filteredSpecialties.length === 0 && (
+        {filteredCategories.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No specialties found matching your search.</p>
+            <p className="text-muted-foreground">No categories found matching your search.</p>
           </div>
         )}
       </section>
