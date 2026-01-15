@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Navigate } from "react-router-dom";
 import { Search, Database, Rss, Globe } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -21,6 +21,13 @@ const CategoryPage = () => {
   const branch = branchId ? getBranchById(branchId) : undefined;
   const category = branchId && categoryId ? getCategoryById(branchId, categoryId) : undefined;
   
+  // Update document title
+  useEffect(() => {
+    if (branch && category) {
+      document.title = `${category.name} | ${branch.name} | ToolForge`;
+    }
+  }, [branch, category]);
+  
   if (!branch || !category) {
     return <Navigate to="/" replace />;
   }
@@ -28,7 +35,8 @@ const CategoryPage = () => {
   const sites = getSitesForCategory(branchId, categoryId);
   const filteredSites = sites.filter(site =>
     site.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    site.description.toLowerCase().includes(searchQuery.toLowerCase())
+    site.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    site.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const IconComponent = iconMap[category.icon] || Folder;
@@ -87,6 +95,7 @@ const CategoryPage = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 h-11"
+              aria-label="Search sites"
             />
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Navigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import Layout from "@/components/Layout";
@@ -35,6 +35,13 @@ const BranchPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   
   const branch = branchId ? getBranchById(branchId) : undefined;
+  
+  // Update document title
+  useEffect(() => {
+    if (branch) {
+      document.title = `${branch.name} | ToolForge`;
+    }
+  }, [branch]);
   
   if (!branch) {
     return <Navigate to="/" replace />;
@@ -83,6 +90,7 @@ const BranchPage = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 h-11"
+              aria-label="Search categories"
             />
           </div>
         </div>

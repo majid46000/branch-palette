@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Search } from "lucide-react";
+import { useEffect } from "react";
 import Layout from "@/components/Layout";
 import BranchCard from "@/components/BranchCard";
 import { branches } from "@/data/directory";
@@ -16,6 +17,11 @@ const Index = () => {
   // Total counts: 40 branches × 5 categories × 10 sites = 2000 sites
   const totalCategories = 40 * 5;
   const totalSites = 40 * 5 * 10;
+
+  // Reset title on homepage
+  useEffect(() => {
+    document.title = `ToolForge — ${branches.length} Hubs, ${totalSites}+ Free Tools`;
+  }, []);
 
   return (
     <Layout>
@@ -42,6 +48,7 @@ const Index = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 h-12 text-base"
+                aria-label="Search tool hubs"
               />
             </div>
           </div>
