@@ -1,0 +1,65 @@
+{
+  "branches": [
+    {
+      "id": "branch-1",
+      "name": "Web Development",
+      "description": "Resources and tools for building web applications.",
+      "icon": "Code",
+      "categoryCount": 1,
+      "layoutVariant": "grid",
+      "styleVariant": "default",
+      "categories": [
+        {
+          "id": "cat-1",
+          "name": "Frontend",
+          "description": "Libraries and frameworks for building UIs.",
+          "icon": "Palette",
+          "branchId": "branch-1",
+          "siteCount": 2,
+          "layoutVariant": "grid",
+          "styleVariant": "gradient",
+          "sites": [
+            {
+              "id": "site-1",
+              "name": "React",
+              "tagline": "A JavaScript library for building user interfaces.",
+              "description": "React makes it painless to create interactive UIs.",
+              "fullDescription": "React is a declarative, efficient, and flexible JavaScript library for building user interfaces.",
+              "url": "https://reactjs.org",
+              "applyUrl": "",
+              "categoryId": "cat-1",
+              "branchId": "branch-1",
+              "skills": [],
+              "benefits": [],
+              "features": ["Components", "JSX", "Virtual DOM"],
+              "pricing": "Free",
+              "metadata": { "lastUpdated": "2025-08-01", "version": "18.x", "license": "MIT", "platform": "Web", "language": "JavaScript" },
+              "tags": ["javascript", "ui", "library"],
+              "rating": 4.8,
+              "reviews": 4500
+            },
+            {
+              "id": "site-2",
+              "name": "Vite",
+              "tagline": "Next Generation Frontend Tooling.",
+              "description": "Vite provides a faster and leaner development experience for modern web projects.",
+              "fullDescription": "Vite leverages native ES modules and provides blazing fast HMR.",
+              "url": "https://vitejs.dev",
+              "applyUrl": "",
+              "categoryId": "cat-1",
+              "branchId": "branch-1",
+              "skills": [],
+              "benefits": [],
+              "features": ["Fast dev server", "Bundling with Rollup"],
+              "pricing": "Free",
+              "metadata": { "lastUpdated": "2025-02-10", "version": "5.x", "license": "MIT", "platform": "Web", "language": "TypeScript" },
+              "tags": ["bundler", "build", "devtools"],
+              "rating": 4.7,
+              "reviews": 1200
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
