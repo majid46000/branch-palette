@@ -1,52 +1,44 @@
-name: Deploy to GitHub Pages
+name: Build and Deploy
 
 on:
   push:
     branches:
-      - main
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: pages
-  cancel-in-progress: false
+      - main  # غيّرها إلى الفرع الأساسي لديك
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install Dependencies
+        run: |
+          npm install
+          # توليد package-lock.json بشكل صحيح إذا لم يكن متوافق
+          npm ci || npm install
 
-      - name: Build
+      - name: Build Project
         run: npm run build
 
-      - name: Upload Pages artifact
+      - name: Upload Pages Artifact
+        if: success()
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: dist  # تأكد أن مجلد البناء الخاص بك هو dist
 
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     needs: build
-
+    runs-on: ubuntu-latest
     steps:
+      - name: Download Pages Artifact
+        uses: actions/download-pages-artifact@v1
+
       - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v1
