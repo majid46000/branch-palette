@@ -180,11 +180,11 @@ const generateFullDescription = (siteName: string, categoryName: string, branchN
   `${siteName} is a full-featured platform in the ${categoryName} category of ${branchName}, designed for professionals and teams. It provides intuitive workflows, robust automation, and seamless integrations, delivering measurable results.`;
 
 const generateSkills = (idx: number): SiteSkill[] => [
-  { name: "Data Analysis", level: "intermediate" },
-  { name: "API Integration", level: "beginner" },
-  { name: "Workflow Design", level: "advanced" },
-  { name: "Report Generation", level: "intermediate" }
-].map((s, i) => ({ ...s }));
+  { name: "Data Analysis", level: "intermediate" as const },
+  { name: "API Integration", level: "beginner" as const },
+  { name: "Workflow Design", level: "advanced" as const },
+  { name: "Report Generation", level: "intermediate" as const }
+];
 
 const generateBenefits = (): SiteBenefit[] => [
   { title: "Free Tier Available", description: "Start with a generous free plan" },
