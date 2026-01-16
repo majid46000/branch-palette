@@ -46,10 +46,8 @@ jobs:
           test -f dist/sitemap.xml
           test -f dist/robots.txt
 
-      - name: Commit build artifacts
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add dist package-lock.json node_modules || true
-          git commit -m "Build site and fix missing dependency for SEO" || echo "No changes"
-          git push
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: branch-palette-dist
+          path: dist
