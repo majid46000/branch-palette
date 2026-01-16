@@ -1,0 +1,59 @@
+name: Generate Branch-Palette Data
+
+on:
+  workflow_dispatch: # تشغيل يدوي من GitHub Actions UI
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: "npm"
+
+      # Install dependencies
+      - name: Install dependencies
+        run: npm ci
+
+      # Run the data generation script
+      - name: Generate data
+        run: node scripts/generate-data.js
+
+      # Validate generated files exist
+      - name: Validate outputs
+        run: |
+          if [ ! -f public/data/directory.json ]; then
+            echo "directory.json not found!"
+            exit 1
+          fi
+          if [ ! -f public/data/sites.json ]; then
+            echo "sites.json not found!"
+            exit 1
+          fi
+          if [ ! -f src/data/generated.ts ]; then
+            echo "generated.ts not found!"
+            exit 1
+          fi
+          echo "All files generated successfully."
+
+      # Commit and push changes to a feature branch
+      - name: Commit and push generated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -B feat/generate-full-data
+          git add public/data/directory.json public/data/sites.json src/data/generated.ts
+          git commit -m "feat(data): generate full dataset (40 branches, 200 categories, 2000 sites)" || echo "No changes to commit"
+          git push -f origin feat/generate-full-data
+
+      # Output success message
+      - name: Done
+        run: echo "Data generation complete. Branch 'feat/generate-full-data' is ready for PR."
