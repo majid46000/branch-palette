@@ -1,48 +1,35 @@
-name: Build & Generate Site
+name: Build Site
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:  # لتشغيله يدويًا إذا أردت
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate Data
+      - name: Generate data
         run: node scripts/generate-data.js
 
-      - name: Generate Sitemap
+      - name: Generate sitemap
         run: node scripts/generate-sitemap.js
 
-      - name: Generate Meta Tags
+      - name: Generate meta
         run: node scripts/generate-meta.js
 
-      - name: Build Project
+      - name: Build project
         run: npm run build
-
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: branch-palette-build
-          path: dist/
-
-      - name: Display Success Message
-        run: echo "✅ Workflow completed successfully. Build artifacts are ready."
