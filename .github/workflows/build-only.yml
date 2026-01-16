@@ -1,4 +1,4 @@
-name: Build & Deploy Lovable
+name: Build & Deploy
 
 on:
   push:
@@ -15,29 +15,30 @@ jobs:
       id-token: write
 
     steps:
-      # 1. سحب الكود
-      - name: Checkout Repository
+      # 1. Checkout the repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. إعداد Node.js
+      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 3. تثبيت dependencies مع تصحيح مشاكل lock file
-      - name: Install Dependencies
-        run: |
-          npm install
-          npm ci || npm install
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: npm ci || npm install
 
-      # 4. بناء المشروع
-      - name: Build Project
+      # 4. Build the project
+      - name: Build
         run: npm run build
 
-      # 5. رفع الناتج ونشره مباشرة على GitHub Pages
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v1
+      # 5. Upload the build artifact
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v1
         with:
-          branch: gh-pages      # الفرع الذي سينشر عليه الموقع
-          folder: dist          # مجلد البناء الناتج عن vite
+          path: dist
+
+      # 6. Deploy to GitHub Pages
+      - name: Deploy to Pages
+        uses: actions/deploy-pages@v1
