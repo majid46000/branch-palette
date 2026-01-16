@@ -1,4 +1,4 @@
-name: Build & Deploy (FULL AUTO)
+name: Build & Generate & Deploy
 
 on:
   push:
@@ -22,24 +22,30 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
       - name: Install dependencies
         run: npm install
 
-      - name: Generate data
+      - name: Generate site content (FULL)
         run: |
           node scripts/generate-data.js
+          node scripts/generate-pages.js
           node scripts/generate-sitemap.js
           node scripts/generate-meta.js
 
-      - name: Commit generated files
+      - name: Commit generated content
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          git diff --cached --quiet || git commit -m "chore: auto-generate site data"
-          git push
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+
+          git add src/data public || true
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "auto: generate full static site"
+            git push
+          fi
 
       - name: Build site
         run: npm run build
@@ -55,7 +61,11 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
