@@ -1,29 +1,51 @@
-#!/usr/bin/env node
 import fs from "fs";
 import path from "path";
-import { GENERATED_DIRECTORY } from "../src/data/generated.js";
+import { fileURLToPath } from "url";
 
-const outDir = path.join(process.cwd(), "public");
-fs.mkdirSync(outDir, { recursive: true });
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const sitemapHeader = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`;
-const sitemapFooter = "</urlset>";
+const DATA_FILE = path.join(__dirname, "../src/data/generated.json");
+const OUTPUT_FILE = path.join(__dirname, "../public/sitemap.xml");
 
-let urls = [`<url><loc>https://your-domain.com/</loc></url>`];
+if (!fs.existsSync(DATA_FILE)) {
+  console.error("❌ generated.json not found");
+  process.exit(1);
+}
 
-GENERATED_DIRECTORY.branches.forEach(branch => {
-  const branchUrl = `https://your-domain.com/${branch.id}`;
-  urls.push(`<url><loc>${branchUrl}</loc></url>`);
-  const categories = GENERATED_DIRECTORY.categories.filter(c => c.branchId === branch.id);
-  categories.forEach(cat => {
-    const catUrl = `${branchUrl}/${cat.id}`;
-    urls.push(`<url><loc>${catUrl}</loc></url>`);
-    const sites = GENERATED_DIRECTORY.sites.filter(s => s.branchId === branch.id && s.categoryId === cat.id);
-    sites.forEach(site => urls.push(`<url><loc>${site.url}</loc></url>`));
-  });
+const data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+
+const BASE_URL = "https://example.com";
+
+const urls = [];
+
+data.branches.forEach((b) => {
+  urls.push(`${BASE_URL}/${b.slug}`);
 });
 
-fs.writeFileSync(path.join(outDir, "sitemap.xml"), `${sitemapHeader}\n${urls.join("\n")}\n${sitemapFooter}`);
-fs.writeFileSync(path.join(outDir, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: https://your-domain.com/sitemap.xml`);
+data.categories.forEach((c) => {
+  urls.push(`${BASE_URL}/${c.branchId}/${c.slug}`);
+});
 
-console.log("✅ Sitemap and robots.txt generated.");
+data.sites.forEach((s) => {
+  urls.push(`${BASE_URL}/${s.categoryId}/${s.slug}`);
+});
+
+const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls
+  .map(
+    (u) => `
+  <url>
+    <loc>${u}</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`
+  )
+  .join("")}
+</urlset>`;
+
+fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
+fs.writeFileSync(OUTPUT_FILE, xml.trim(), "utf-8");
+
+console.log("✅ generate-sitemap.js completed successfully");
