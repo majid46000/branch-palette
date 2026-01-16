@@ -1,44 +1,43 @@
-name: Build and Deploy
+name: Build & Deploy Lovable
 
 on:
   push:
     branches:
-      - main  # غيّرها إلى الفرع الأساسي لديك
+      - main
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
     steps:
+      # 1. سحب الكود
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # 2. إعداد Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # 3. تثبيت dependencies مع تصحيح مشاكل lock file
       - name: Install Dependencies
         run: |
           npm install
-          # توليد package-lock.json بشكل صحيح إذا لم يكن متوافق
           npm ci || npm install
 
+      # 4. بناء المشروع
       - name: Build Project
         run: npm run build
 
-      - name: Upload Pages Artifact
-        if: success()
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist  # تأكد أن مجلد البناء الخاص بك هو dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Pages Artifact
-        uses: actions/download-pages-artifact@v1
-
+      # 5. رفع الناتج ونشره مباشرة على GitHub Pages
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v1
+        with:
+          branch: gh-pages      # الفرع الذي سينشر عليه الموقع
+          folder: dist          # مجلد البناء الناتج عن vite
