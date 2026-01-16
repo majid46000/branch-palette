@@ -15,30 +15,30 @@ jobs:
       id-token: write
 
     steps:
-      # 1. Checkout the repository
-      - name: Checkout
+      # Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Setup Node.js
+      # Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # 3. Install dependencies
+      # Install dependencies
       - name: Install dependencies
         run: npm ci || npm install
 
-      # 4. Build the project
+      # Build the project
       - name: Build
         run: npm run build
 
-      # 5. Upload the build artifact
+      # Upload the artifact for Pages
       - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v2
         with:
           path: dist
 
-      # 6. Deploy to GitHub Pages
+      # Deploy to GitHub Pages
       - name: Deploy to Pages
         uses: actions/deploy-pages@v1
