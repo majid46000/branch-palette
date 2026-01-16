@@ -1,0 +1,60 @@
+name: Full Build & Data Pipeline
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate data
+        run: |
+          echo "Generating data..."
+          npm run generate-data
+
+      - name: Build site
+        run: |
+          echo "Building site..."
+          npm run build
+
+      - name: Commit & push changes to deploy branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -B deploy/auto-build
+
+          git add public/data/directory.json public/data/sites.json src/data/generated.ts || true
+
+          if [ -d dist ]; then
+            git add dist
+          else
+            echo "No dist folder to add (check build step)."
+          fi
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: auto-generate data and build site"
+            git push -f origin deploy/auto-build
+          fi
+
+      - name: Done
+        run: echo "Pipeline complete: data generated, site built, branch 'deploy/auto-build' updated."
