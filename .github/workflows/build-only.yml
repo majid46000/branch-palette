@@ -1,51 +1,53 @@
-name: Full Build & Deploy
+name: Build & Deploy (FULL AUTO)
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      # 1️⃣ Checkout
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # 2️⃣ Setup Node.js
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
-      # 3️⃣ Install dependencies
       - name: Install dependencies
         run: npm install
 
-      # 4️⃣ Generate data
       - name: Generate data
-        run: node scripts/generate-data.js
+        run: |
+          node scripts/generate-data.js
+          node scripts/generate-sitemap.js
+          node scripts/generate-meta.js
 
-      # 5️⃣ Generate sitemap
-      - name: Generate sitemap
-        run: node scripts/generate-sitemap.js
+      - name: Commit generated files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git diff --cached --quiet || git commit -m "chore: auto-generate site data"
+          git push
 
-      # 6️⃣ Generate meta tags for SEO
-      - name: Generate meta tags
-        run: node scripts/generate-meta.js
-
-      # 7️⃣ Build the project
-      - name: Build project
+      - name: Build site
         run: npm run build
 
-      # 8️⃣ Configure GitHub Pages
-      - name: Configure GitHub Pages
+      - name: Configure Pages
         uses: actions/configure-pages@v5
 
-      # 9️⃣ Upload artifact for deployment
-      - name: Upload pages artifact
+      - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
@@ -53,10 +55,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
+
     steps:
       - name: Deploy to GitHub Pages
-        id: deployment
         uses: actions/deploy-pages@v4
