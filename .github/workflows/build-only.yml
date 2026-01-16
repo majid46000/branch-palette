@@ -1,4 +1,4 @@
-name: Build & Deploy
+name: Full Build & Deploy
 
 on:
   push:
@@ -7,38 +7,56 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-
     steps:
-      # Checkout
+      # 1️⃣ Checkout
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Setup Node.js
-      - name: Setup Node.js
+      # 2️⃣ Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # Install dependencies
+      # 3️⃣ Install dependencies
       - name: Install dependencies
-        run: npm ci || npm install
+        run: npm install
 
-      # Build the project
-      - name: Build
+      # 4️⃣ Generate data
+      - name: Generate data
+        run: node scripts/generate-data.js
+
+      # 5️⃣ Generate sitemap
+      - name: Generate sitemap
+        run: node scripts/generate-sitemap.js
+
+      # 6️⃣ Generate meta tags for SEO
+      - name: Generate meta tags
+        run: node scripts/generate-meta.js
+
+      # 7️⃣ Build the project
+      - name: Build project
         run: npm run build
 
-      # Upload the artifact for Pages
-      - name: Upload Pages Artifact
-        uses: actions/upload-pages-artifact@v2
+      # 8️⃣ Configure GitHub Pages
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      # 9️⃣ Upload artifact for deployment
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-      # Deploy to GitHub Pages
-      - name: Deploy to Pages
-        uses: actions/deploy-pages@v1
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
