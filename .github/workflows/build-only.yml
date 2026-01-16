@@ -1,10 +1,15 @@
-name: Build & SEO Ready
+name: Generate & Deploy Branch-Palette
 
 on:
   workflow_dispatch:
+    inputs:
+      DATA_SEED:
+        description: 'Seed for deterministic data generation'
+        required: false
+        default: '20260116'
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -14,40 +19,74 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
-          cache: npm
+          node-version: '18'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Fix missing dependency (react-helmet-async)
-        run: npm install react-helmet-async
+      - name: Generate data and write files
+        env:
+          DATA_SEED: ${{ github.event.inputs.DATA_SEED }}
+        run: |
+          echo "Running data generation with seed $DATA_SEED"
+          node -e "
+          import fs from 'fs';
+          import path from 'path';
+          import { branches, getCategoriesForBranch, getSitesForCategory } from './src/data/directory.ts';
 
-      - name: Build Vite site
-        run: npm run build
+          const outDir = path.join(process.cwd(), 'public', 'data');
+          if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+
+          const allCategories = [];
+          const allSites = [];
+
+          branches.forEach(branch => {
+            const categories = getCategoriesForBranch(branch.id);
+            allCategories.push(...categories);
+            categories.forEach(cat => {
+              const sites = getSitesForCategory(branch.id, cat.id);
+              allSites.push(...sites);
+            });
+          });
+
+          // Write JSON files
+          fs.writeFileSync(path.join(outDir, 'branches.json'), JSON.stringify(branches, null, 2));
+          fs.writeFileSync(path.join(outDir, 'categories.json'), JSON.stringify(allCategories, null, 2));
+          fs.writeFileSync(path.join(outDir, 'sites.json'), JSON.stringify(allSites, null, 2));
+
+          // Write TS file
+          const tsDir = path.join(process.cwd(), 'src', 'data');
+          if (!fs.existsSync(tsDir)) fs.mkdirSync(tsDir, { recursive: true });
+          const tsContent = `// Auto-generated
+export const GENERATED_BRANCHES = ${JSON.stringify(branches, null, 2)};
+export const GENERATED_CATEGORIES = ${JSON.stringify(allCategories, null, 2)};
+export const GENERATED_SITES = ${JSON.stringify(allSites, null, 2)};
+`;
+          fs.writeFileSync(path.join(tsDir, 'generated.ts'), tsContent);
+
+          console.log('Data generation complete.');
+          "
 
       - name: Generate sitemap.xml
         run: |
-          echo '<?xml version="1.0" encoding="UTF-8"?>' > dist/sitemap.xml
-          echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' >> dist/sitemap.xml
-          echo '  <url><loc>https://example.com/</loc></url>' >> dist/sitemap.xml
-          echo '</urlset>' >> dist/sitemap.xml
+          node -e "
+          import fs from 'fs';
+          import path from 'path';
+          const outDir = path.join(process.cwd(), 'public');
+          const sitesFile = path.join(outDir, 'data', 'sites.json');
+          const sites = JSON.parse(fs.readFileSync(sitesFile, 'utf8'));
+          const urls = sites.map(s => `<url><loc>${s.url}</loc><lastmod>${s.metadata.lastUpdated}</lastmod></url>`).join('');
+          const sitemap = `<?xml version=\"1.0\" encoding=\"UTF-8\"?><urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">${urls}</urlset>`;
+          fs.writeFileSync(path.join(outDir, 'sitemap.xml'), sitemap);
+          console.log('Sitemap generated.');
+          "
 
-      - name: Generate robots.txt
+      - name: Commit and push generated files
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "User-agent: *" > dist/robots.txt
-          echo "Allow: /" >> dist/robots.txt
-          echo "Sitemap: https://example.com/sitemap.xml" >> dist/robots.txt
-
-      - name: Verify build output
-        run: |
-          test -d dist
-          test -f dist/index.html
-          test -f dist/sitemap.xml
-          test -f dist/robots.txt
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: branch-palette-dist
-          path: dist
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add public/data/* src/data/generated.ts public/sitemap.xml
+          git commit -m "Automated data generation [skip ci]" || echo "No changes to commit"
+          git push
