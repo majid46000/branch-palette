@@ -5,12 +5,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const OUTPUT_DIR = path.join(__dirname, "../src/data");
-const OUTPUT_FILE = path.join(OUTPUT_DIR, "generated.json");
-
-if (!fs.existsSync(OUTPUT_DIR)) {
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-}
+const OUTPUT_FILE = path.join(__dirname, "../src/data/directory.ts");
 
 const slugify = (text) =>
   text
@@ -40,17 +35,21 @@ const sites = categories.flatMap((cat) =>
     categoryId: cat.id,
     name: `Site ${i + 1}`,
     slug: slugify(`Site ${i + 1}`),
-    url: "#",
+    url: `https://example.com/${cat.slug}/site-${i + 1}`,
   }))
 );
 
-const data = {
-  generatedAt: new Date().toISOString(),
-  branches,
-  categories,
-  sites,
-};
+const content = `
+// ⚠️ THIS FILE IS AUTO-GENERATED — DO NOT EDIT MANUALLY
+// Generated at: ${new Date().toISOString()}
 
-fs.writeFileSync(OUTPUT_FILE, JSON.stringify(data, null, 2), "utf-8");
+export const branches = ${JSON.stringify(branches, null, 2)} as const;
 
-console.log("✅ generate-data.js completed successfully");
+export const categories = ${JSON.stringify(categories, null, 2)} as const;
+
+export const sites = ${JSON.stringify(sites, null, 2)} as const;
+`;
+
+fs.writeFileSync(OUTPUT_FILE, content.trim() + "\n", "utf-8");
+
+console.log("✅ directory.ts regenerated successfully");
