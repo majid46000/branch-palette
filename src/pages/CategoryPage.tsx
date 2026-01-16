@@ -49,7 +49,7 @@ const CategoryPage = () => {
 
       <section className="border-b bg-muted/30">
         <div className="container py-10 md:py-14">
-          <Breadcrumb items={[{ label: branch.name, to: `/branch/${branch.id}` }, { label: category.name }]} />
+          <Breadcrumb items={[{ label: branch.name, href: `/branch/${branch.id}` }, { label: category.name }]} />
 
           <div className="flex flex-col md:flex-row md:items-center gap-6 animate-fade-in">
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground">

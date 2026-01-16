@@ -76,8 +76,8 @@ const BranchPage = () => {
 
       <section className="container py-10 md:py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredCategories.map((category: any) => (
-            <CategoryCard key={category.id} category={category} branchId={branch.id} />
+          {filteredCategories.map((category: any, index: number) => (
+            <CategoryCard key={category.id} category={category} branchId={branch.id} index={index} />
           ))}
         </div>
       </section>

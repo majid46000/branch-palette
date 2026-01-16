@@ -6,6 +6,10 @@ type Site = any;
 type Category = any;
 type Branch = any;
 
+interface DirectoryData {
+  branches: Branch[];
+}
+
 interface DirectoryContextValue {
   loading: boolean;
   error: unknown;
@@ -20,9 +24,11 @@ interface DirectoryContextValue {
 const DirectoryContext = createContext<DirectoryContextValue | undefined>(undefined);
 
 export const DirectoryProvider = ({ children }: { children: ReactNode }) => {
-  const { data, isLoading, error } = useQuery(["directory"], () => fetchDirectoryJson("/data/directory.json"), {
+  const { data, isLoading, error } = useQuery<DirectoryData>({
+    queryKey: ["directory"],
+    queryFn: () => fetchDirectoryJson("/data/directory.json"),
     staleTime: 1000 * 60 * 5, // 5 minutes
-    cacheTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 30,
   });
 
   const branches: Branch[] = data?.branches || [];
