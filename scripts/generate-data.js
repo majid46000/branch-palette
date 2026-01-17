@@ -5,7 +5,12 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const OUTPUT_FILE = path.join(__dirname, "../src/data/directory.ts");
+const OUTPUT_DIR = path.join(__dirname, "../src/data");
+const OUTPUT_FILE = path.join(OUTPUT_DIR, "generated.json");
+
+if (!fs.existsSync(OUTPUT_DIR)) {
+  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+}
 
 const slugify = (text) =>
   text
@@ -21,7 +26,7 @@ const branches = Array.from({ length: 40 }, (_, i) => ({
 }));
 
 const categories = branches.flatMap((branch) =>
-  Array.from({ length: 5 }, (_, i) => ({
+  Array.from({ length: 10 }, (_, i) => ({
     id: `${branch.id}-cat-${i + 1}`,
     branchId: branch.id,
     name: `Category ${i + 1}`,
@@ -30,26 +35,29 @@ const categories = branches.flatMap((branch) =>
 );
 
 const sites = categories.flatMap((cat) =>
-  Array.from({ length: 10 }, (_, i) => ({
+  Array.from({ length: 25 }, (_, i) => ({
     id: `${cat.id}-site-${i + 1}`,
     categoryId: cat.id,
     name: `Site ${i + 1}`,
     slug: slugify(`Site ${i + 1}`),
-    url: `https://example.com/${cat.slug}/site-${i + 1}`,
+    url: "#",
+    description: `Detailed overview of ${cat.name} Site ${i + 1}, including classification, usage, and relevance.`,
   }))
 );
 
-const content = `
-// ⚠️ THIS FILE IS AUTO-GENERATED — DO NOT EDIT MANUALLY
-// Generated at: ${new Date().toISOString()}
+fs.writeFileSync(
+  OUTPUT_FILE,
+  JSON.stringify(
+    {
+      generatedAt: new Date().toISOString(),
+      branches,
+      categories,
+      sites,
+    },
+    null,
+    2
+  ),
+  "utf-8"
+);
 
-export const branches = ${JSON.stringify(branches, null, 2)} as const;
-
-export const categories = ${JSON.stringify(categories, null, 2)} as const;
-
-export const sites = ${JSON.stringify(sites, null, 2)} as const;
-`;
-
-fs.writeFileSync(OUTPUT_FILE, content.trim() + "\n", "utf-8");
-
-console.log("✅ directory.ts regenerated successfully");
+console.log("✅ generate-data.js completed");
