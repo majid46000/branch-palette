@@ -1,5 +1,5 @@
 // ⚠️ THIS FILE IS AUTO-GENERATED — DO NOT EDIT MANUALLY
-// Generated at: 2026-01-17T14:19:13.041Z
+// Generated at: 2026-01-17T14:42:48.101Z
 
 export const branches = [
   {
