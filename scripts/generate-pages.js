@@ -1,180 +1,152 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import data from "../src/data/generated.json" assert { type: "json" };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// مصادر البيانات
-const DATA_FILE = path.join(__dirname, "../src/data/generated.json");
+// نولّد الموقع هنا (داخل المستودع)
+const SITE_DIR = path.join(__dirname, "../site");
 
-// مجلد الإخراج النهائي (سيُنشر)
-const DIST_DIR = path.join(__dirname, "../dist");
+// تنظيف وإعادة إنشاء
+fs.rmSync(SITE_DIR, { recursive: true, force: true });
+fs.mkdirSync(SITE_DIR, { recursive: true });
 
-// تحميل البيانات
-const data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
-
-const ensureDir = (dir) => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+const writePage = (filePath, html) => {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, html, "utf-8");
 };
 
-const pageTemplate = ({ title, description, content }) => `
-<!DOCTYPE html>
+const layout = ({ title, description, content }) => `<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>${title}</title>
-  <meta name="description" content="${description}" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body { font-family: Arial, sans-serif; margin: 40px; background:#fafafa; }
-    h1,h2,h3 { color:#111 }
-    ul { padding-left:20px }
-    a { color:#2563eb; text-decoration:none }
-    a:hover { text-decoration:underline }
-    .box { background:white; padding:20px; border-radius:8px; margin-bottom:20px }
-  </style>
+<meta charset="utf-8"/>
+<title>${title}</title>
+<meta name="description" content="${description}"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link rel="canonical" href="https://example.com/"/>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;max-width:1100px;margin:40px auto;padding:0 20px;line-height:1.6}
+a{color:#2563eb;text-decoration:none}
+a:hover{text-decoration:underline}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px}
+.card{border:1px solid #e5e7eb;border-radius:12px;padding:16px}
+h1,h2,h3{line-height:1.2}
+</style>
 </head>
 <body>
 ${content}
 </body>
-</html>
-`;
+</html>`;
 
-// ========================
 // الصفحة الرئيسية
-// ========================
-ensureDir(DIST_DIR);
-
-const homeContent = `
-<h1>Global Branch Directory</h1>
-<p>Browse thousands of categorized websites across multiple branches.</p>
-
-<div class="box">
-<h2>Branches</h2>
-<ul>
+writePage(
+  path.join(SITE_DIR, "index.html"),
+  layout({
+    title: "Global Directory – Massive High Authority Index",
+    description:
+      "A massive static directory with thousands of categorized sites. SEO optimized, fast, crawlable.",
+    content: `
+<h1>Global Directory</h1>
+<p>Browse high-quality categorized resources across multiple branches.</p>
+<div class="grid">
 ${data.branches
   .map(
-    (b) => `<li><a href="/branches/${b.slug}/">${b.name}</a></li>`
+    (b) => `
+  <div class="card">
+    <h2><a href="/branches/${b.slug}/index.html">${b.name}</a></h2>
+    <p>Explore categories inside ${b.name}</p>
+  </div>`
   )
   .join("")}
-</ul>
 </div>
-`;
-
-fs.writeFileSync(
-  path.join(DIST_DIR, "index.html"),
-  pageTemplate({
-    title: "Global Branch Directory",
-    description: "A massive SEO-friendly directory of categorized websites",
-    content: homeContent,
+`,
   })
 );
 
-// ========================
 // صفحات الفروع
-// ========================
 for (const branch of data.branches) {
-  const branchDir = path.join(DIST_DIR, "branches", branch.slug);
-  ensureDir(branchDir);
-
-  const categories = data.categories.filter(
+  const branchCategories = data.categories.filter(
     (c) => c.branchId === branch.id
   );
 
-  const content = `
-  <h1>${branch.name}</h1>
-  <p>Categories under ${branch.name}</p>
-
-  <div class="box">
-  <ul>
-  ${categories
-    .map(
-      (c) =>
-        `<li><a href="/categories/${c.slug}/">${c.name}</a></li>`
-    )
-    .join("")}
-  </ul>
-  </div>
-
-  <a href="/">← Back to home</a>
-  `;
-
-  fs.writeFileSync(
-    path.join(branchDir, "index.html"),
-    pageTemplate({
-      title: `${branch.name} – Branch Directory`,
-      description: `Explore categories under ${branch.name}`,
-      content,
+  writePage(
+    path.join(SITE_DIR, "branches", branch.slug, "index.html"),
+    layout({
+      title: `${branch.name} – Categories`,
+      description: `All categories under ${branch.name}.`,
+      content: `
+<h1>${branch.name}</h1>
+<div class="grid">
+${branchCategories
+  .map(
+    (c) => `
+  <div class="card">
+    <h3><a href="/categories/${c.slug}/index.html">${c.name}</a></h3>
+  </div>`
+  )
+  .join("")}
+</div>
+<a href="/">← Back to home</a>
+`,
     })
   );
 }
 
-// ========================
 // صفحات التصنيفات
-// ========================
 for (const category of data.categories) {
-  const catDir = path.join(DIST_DIR, "categories", category.slug);
-  ensureDir(catDir);
-
-  const sites = data.sites.filter(
+  const categorySites = data.sites.filter(
     (s) => s.categoryId === category.id
   );
 
-  const content = `
-  <h1>${category.name}</h1>
-  <p>Websites listed under ${category.name}</p>
-
-  <div class="box">
-  <ul>
-  ${sites
-    .map(
-      (s) =>
-        `<li><a href="/sites/${s.slug}/">${s.name}</a></li>`
-    )
-    .join("")}
-  </ul>
-  </div>
-
-  <a href="/">← Back to home</a>
-  `;
-
-  fs.writeFileSync(
-    path.join(catDir, "index.html"),
-    pageTemplate({
-      title: `${category.name} – Website Category`,
-      description: `Browse sites in ${category.name}`,
-      content,
+  writePage(
+    path.join(SITE_DIR, "categories", category.slug, "index.html"),
+    layout({
+      title: `${category.name} – Websites`,
+      description: `List of curated websites under ${category.name}.`,
+      content: `
+<h1>${category.name}</h1>
+<div class="grid">
+${categorySites
+  .map(
+    (s) => `
+  <div class="card">
+    <h3><a href="/sites/${s.slug}.html">${s.name}</a></h3>
+    <p>High-quality resource listed in this directory.</p>
+  </div>`
+  )
+  .join("")}
+</div>
+<a href="/">← Back to home</a>
+`,
     })
   );
 }
 
-// ========================
-// صفحات المواقع
-// ========================
+// صفحات المواقع (SEO ذهب)
 for (const site of data.sites) {
-  const siteDir = path.join(DIST_DIR, "sites", site.slug);
-  ensureDir(siteDir);
+  writePage(
+    path.join(SITE_DIR, "sites", `${site.slug}.html`),
+    layout({
+      title: `${site.name} – Detailed Overview`,
+      description: `In-depth overview and classification of ${site.name}.`,
+      content: `
+<h1>${site.name}</h1>
+<p>
+${site.name} is a curated resource listed in our global directory.
+This page provides contextual information, classification, and relevance.
+</p>
 
-  const content = `
-  <h1>${site.name}</h1>
-  <p>This website belongs to our curated directory.</p>
+<p>
+Being indexed in a static directory ensures fast loading, high crawlability,
+and strong SEO signals.
+</p>
 
-  <div class="box">
-    <p><strong>Visit:</strong> <a href="${site.url}">${site.url}</a></p>
-  </div>
-
-  <a href="/">← Back to home</a>
-  `;
-
-  fs.writeFileSync(
-    path.join(siteDir, "index.html"),
-    pageTemplate({
-      title: `${site.name} – Listed Website`,
-      description: `Details and information about ${site.name}`,
-      content,
+<a href="/">← Back to home</a>
+`,
     })
   );
 }
 
-console.log("✅ Static HTML pages generated successfully");
+console.log("✅ Static pages generated into /site");
