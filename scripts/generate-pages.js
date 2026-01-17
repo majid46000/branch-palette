@@ -2,105 +2,130 @@ import fs from "fs";
 import path from "path";
 import data from "../src/data/generated.json" assert { type: "json" };
 
-const DIST = path.resolve("dist");
+const DIST = "dist";
 
-const ensureDir = (p) => {
-  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
-};
+const ensure = (p) => fs.mkdirSync(p, { recursive: true });
 
-const layout = (title, description, content) => `<!DOCTYPE html>
+const page = (title, description, content) => `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>${title}</title>
-  <meta name="description" content="${description}" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="canonical" href="/" />
-  <style>
-    body{font-family:system-ui;margin:40px;background:#fafafa;color:#111}
-    h1,h2{color:#0f172a}
-    a{display:block;margin:6px 0;color:#2563eb;text-decoration:none}
-    a:hover{text-decoration:underline}
-  </style>
+<meta charset="UTF-8" />
+<title>${title}</title>
+<meta name="description" content="${description}" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "${title}",
+  "description": "${description}"
+}
+</script>
+
+<style>
+body{font-family:system-ui;max-width:1100px;margin:auto;padding:40px;line-height:1.7}
+a{color:#2563eb;text-decoration:none}
+h1,h2,h3{margin-top:1.5em}
+ul{padding-left:20px}
+</style>
 </head>
 <body>
+<h1>${title}</h1>
 ${content}
 </body>
 </html>`;
 
-ensureDir(DIST);
+ensure(DIST);
 
-// homepage
+/* HOME */
 fs.writeFileSync(
-  path.join(DIST, "index.html"),
-  layout(
-    "Branch Palette – Directory",
-    "Huge directory of branches, categories and sites",
-    `<h1>Branches</h1>
-     ${data.branches
-       .map((b) => `<a href="/branches/${b.slug}.html">${b.name}</a>`)
-       .join("")}`
+  `${DIST}/index.html`,
+  page(
+    "Global Web Directory",
+    "Massive categorized directory of websites, branches, and resources.",
+    `<p>This is a large-scale static web directory designed for discovery, classification, and search visibility.</p>
+<ul>
+${data.branches
+  .map((b) => `<li><a href="/branch-palette/branches/${b.slug}/">${b.name}</a></li>`)
+  .join("")}
+</ul>`
   )
 );
 
-// branches
-ensureDir(path.join(DIST, "branches"));
-ensureDir(path.join(DIST, "categories"));
-ensureDir(path.join(DIST, "sites"));
-
+/* BRANCHES */
 data.branches.forEach((b) => {
+  const dir = `${DIST}/branches/${b.slug}`;
+  ensure(dir);
+
   const cats = data.categories.filter((c) => c.branchId === b.id);
 
   fs.writeFileSync(
-    path.join(DIST, "branches", `${b.slug}.html`),
-    layout(
-      `${b.name} – Branch`,
-      `All categories under ${b.name}`,
-      `<h1>${b.name}</h1>
-       <h2>Categories</h2>
-       ${cats
-         .map(
-           (c) =>
-             `<a href="/categories/${c.slug}.html">${c.name}</a>`
-         )
-         .join("")}`
+    `${dir}/index.html`,
+    page(
+      `${b.name} Directory`,
+      `Explore categories under ${b.name}.`,
+      `<p>${b.name} contains curated categories and resources.</p>
+<ul>
+${cats
+  .map(
+    (c) =>
+      `<li><a href="/branch-palette/branches/${b.slug}/categories/${c.slug}/">${c.name}</a></li>`
+  )
+  .join("")}
+</ul>`
     )
   );
+
+  cats.forEach((c) => {
+    const cdir = `${dir}/categories/${c.slug}`;
+    ensure(cdir);
+
+    const sites = data.sites.filter((s) => s.categoryId === c.id);
+
+    fs.writeFileSync(
+      `${cdir}/index.html`,
+      page(
+        `${c.name} – ${b.name}`,
+        `Websites listed under ${c.name} in ${b.name}.`,
+        `<p>${c.name} includes the following websites:</p>
+<ul>
+${sites
+  .map(
+    (s) =>
+      `<li><a href="/branch-palette/branches/${b.slug}/categories/${c.slug}/sites/${s.slug}.html">${s.name}</a></li>`
+  )
+  .join("")}
+</ul>`
+      )
+    );
+
+    sites.forEach((s) => {
+      const sdir = `${cdir}/sites`;
+      ensure(sdir);
+
+      fs.writeFileSync(
+        `${sdir}/${s.slug}.html`,
+        page(
+          `${s.name} – ${c.name}`,
+          s.description,
+          `<p>${s.description}</p>
+<p>Category: <strong>${c.name}</strong></p>
+<p>Branch: <strong>${b.name}</strong></p>
+<p>This page is part of a large static directory optimized for search engines.</p>`
+        )
+      );
+    });
+  });
 });
 
-// categories
-data.categories.forEach((c) => {
-  const sites = data.sites.filter((s) => s.categoryId === c.id);
+/* robots.txt */
+fs.writeFileSync(
+  `${DIST}/robots.txt`,
+  `User-agent: *
+Allow: /
 
-  fs.writeFileSync(
-    path.join(DIST, "categories", `${c.slug}.html`),
-    layout(
-      `${c.name} – Category`,
-      `Websites in ${c.name}`,
-      `<h1>${c.name}</h1>
-       <h2>Sites</h2>
-       ${sites
-         .map(
-           (s) =>
-             `<a href="/sites/${s.slug}.html">${s.name}</a>`
-         )
-         .join("")}`
-    )
-  );
-});
+Sitemap: https://majid46000.github.io/branch-palette/sitemap.xml`
+);
 
-// sites
-data.sites.forEach((s) => {
-  fs.writeFileSync(
-    path.join(DIST, "sites", `${s.slug}.html`),
-    layout(
-      `${s.name} – Website`,
-      `${s.name} website information`,
-      `<h1>${s.name}</h1>
-       <p>This is a static SEO page for ${s.name}</p>
-       <a href="/">← Back to home</a>`
-    )
-  );
-});
-
-console.log("✅ Static HTML pages generated");
+console.log("✅ generate-pages.js completed");
