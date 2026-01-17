@@ -1,4 +1,4 @@
-name: Build Generate Deploy
+name: Build & Generate Static Site & Deploy
 
 on:
   push:
@@ -25,34 +25,28 @@ jobs:
         run: npm install
 
       - name: Generate data
-        run: |
-          node scripts/generate-data.js
-          node scripts/generate-sitemap.js
-          node scripts/generate-meta.js
+        run: node scripts/generate-data.js
 
       - name: Generate static HTML pages
         run: node scripts/generate-pages.js
 
-      - name: Commit generated content
+      - name: Commit generated site
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-
-          git add public src/data
-
+          git add dist
           if git diff --cached --quiet; then
-            echo "No changes to commit"
+            echo "No changes"
           else
-            git commit -m "auto: generate static pages"
+            git commit -m "auto: generate static site"
             git push
           fi
 
-      - name: Build site
-        run: npm run build
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
 
-      - uses: actions/configure-pages@v5
-
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
@@ -61,8 +55,9 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - id: deploy
+      - name: Deploy
+        id: deployment
         uses: actions/deploy-pages@v4
