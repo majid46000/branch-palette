@@ -1,51 +1,31 @@
 import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+import data from "../src/data/generated.json" assert { type: "json" };
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const DATA_FILE = path.join(__dirname, "../src/data/generated.json");
-const OUTPUT_FILE = path.join(__dirname, "../public/sitemap.xml");
-
-if (!fs.existsSync(DATA_FILE)) {
-  console.error("❌ generated.json not found");
-  process.exit(1);
-}
-
-const data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
-
-const BASE_URL = "https://example.com";
-
-const urls = [];
+const base = "https://majid46000.github.io/branch-palette";
+let urls = [`${base}/`];
 
 data.branches.forEach((b) => {
-  urls.push(`${BASE_URL}/${b.slug}`);
-});
+  urls.push(`${base}/branches/${b.slug}/`);
 
-data.categories.forEach((c) => {
-  urls.push(`${BASE_URL}/${c.branchId}/${c.slug}`);
-});
+  data.categories
+    .filter((c) => c.branchId === b.id)
+    .forEach((c) => {
+      urls.push(`${base}/branches/${b.slug}/categories/${c.slug}/`);
 
-data.sites.forEach((s) => {
-  urls.push(`${BASE_URL}/${s.categoryId}/${s.slug}`);
+      data.sites
+        .filter((s) => s.categoryId === c.id)
+        .forEach((s) => {
+          urls.push(
+            `${base}/branches/${b.slug}/categories/${c.slug}/sites/${s.slug}.html`
+          );
+        });
+    });
 });
 
 const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls
-  .map(
-    (u) => `
-  <url>
-    <loc>${u}</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>`
-  )
-  .join("")}
+${urls.map((u) => `<url><loc>${u}</loc></url>`).join("\n")}
 </urlset>`;
 
-fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true });
-fs.writeFileSync(OUTPUT_FILE, xml.trim(), "utf-8");
-
-console.log("✅ generate-sitemap.js completed successfully");
+fs.writeFileSync("dist/sitemap.xml", xml);
+console.log("✅ sitemap generated");
