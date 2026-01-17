@@ -6,63 +6,134 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DATA_FILE = path.join(__dirname, "../src/data/generated.json");
-const OUTPUT_DIR = path.join(__dirname, "../public/pages");
+const PUBLIC_DIR = path.join(__dirname, "../public");
+
+if (!fs.existsSync(DATA_FILE)) {
+  console.error("❌ generated.json not found");
+  process.exit(1);
+}
 
 const data = JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
 
-fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });
-fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+const ensureDir = (dir) => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+};
 
-function pageTemplate({ title, description, h1, links }) {
-  return `<!DOCTYPE html>
+const writeFile = (filePath, content) => {
+  ensureDir(path.dirname(filePath));
+  fs.writeFileSync(filePath, content, "utf-8");
+};
+
+const baseHTML = ({ title, description, body, url }) => `
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <title>${title}</title>
 <meta name="description" content="${description}" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<link rel="canonical" content="${url}" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  "name": "${title}",
+  "description": "${description}",
+  "url": "${url}"
+}
+</script>
+
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.7; padding: 40px; max-width: 1100px; margin: auto; }
+h1, h2, h3 { color: #111; }
+p { color: #333; }
+</style>
 </head>
 <body>
-<h1>${h1}</h1>
-<p>${description}</p>
-
-<h2>Related Pages</h2>
-<ul>
-${links.map(l => `<li><a href="${l.href}">${l.text}</a></li>`).join("\n")}
-</ul>
-
+${body}
 </body>
-</html>`;
-}
+</html>
+`;
 
-for (const branch of data.branches) {
-  const branchDir = path.join(OUTPUT_DIR, branch.slug);
-  fs.mkdirSync(branchDir, { recursive: true });
+const siteUrl = "https://majid46000.github.io/branch-palette";
 
-  const branchCats = data.categories.filter(c => c.branchId === branch.id);
+/* =======================
+   BRANCH PAGES
+======================= */
+data.branches.forEach((branch) => {
+  const html = baseHTML({
+    title: `${branch.name} Directory`,
+    description: `Complete directory and resources for ${branch.name}.`,
+    url: `${siteUrl}/branches/${branch.slug}/`,
+    body: `
+<h1>${branch.name}</h1>
+<p>${branch.name} is a comprehensive directory containing multiple categories and resources designed for large-scale discovery and indexing.</p>
+<h2>About ${branch.name}</h2>
+<p>This branch provides structured content optimized for search engines with high semantic relevance.</p>
+`
+  });
 
-  for (const cat of branchCats) {
-    const catDir = path.join(branchDir, cat.slug);
-    fs.mkdirSync(catDir, { recursive: true });
+  writeFile(
+    path.join(PUBLIC_DIR, "branches", branch.slug, "index.html"),
+    html
+  );
+});
 
-    const catSites = data.sites.filter(s => s.categoryId === cat.id);
+/* =======================
+   CATEGORY PAGES
+======================= */
+data.categories.forEach((cat) => {
+  const branch = data.branches.find(b => b.id === cat.branchId);
 
-    for (const site of catSites) {
-      const filePath = path.join(catDir, `${site.slug}.html`);
+  const html = baseHTML({
+    title: `${cat.name} in ${branch.name}`,
+    description: `Explore ${cat.name} under ${branch.name} with detailed structured content.`,
+    url: `${siteUrl}/categories/${branch.slug}/${cat.slug}/`,
+    body: `
+<h1>${cat.name}</h1>
+<h2>Branch: ${branch.name}</h2>
+<p>${cat.name} is a specialized category offering structured and scalable information optimized for indexing.</p>
+`
+  });
 
-      const html = pageTemplate({
-        title: `${site.name} – ${cat.name} | ${branch.name}`,
-        description: `Discover ${site.name} in ${cat.name} under ${branch.name}. A high quality curated reference.`,
-        h1: site.name,
-        links: catSites.slice(0, 5).map(s => ({
-          href: `./${s.slug}.html`,
-          text: s.name
-        }))
-      });
+  writeFile(
+    path.join(PUBLIC_DIR, "categories", branch.slug, cat.slug, "index.html"),
+    html
+  );
+});
 
-      fs.writeFileSync(filePath, html, "utf-8");
-    }
-  }
-}
+/* =======================
+   SITE PAGES
+======================= */
+data.sites.forEach((site) => {
+  const category = data.categories.find(c => c.id === site.categoryId);
+  const branch = data.branches.find(b => b.id === category.branchId);
 
-console.log("✅ generate-pages.js completed successfully");
+  const html = baseHTML({
+    title: `${site.name} – ${category.name}`,
+    description: `${site.name} is listed under ${category.name} in ${branch.name}.`,
+    url: `${siteUrl}/sites/${branch.slug}/${category.slug}/${site.slug}/`,
+    body: `
+<h1>${site.name}</h1>
+<h2>${category.name} / ${branch.name}</h2>
+<p>This page represents a standalone indexed entity designed for maximum SEO exposure.</p>
+<p>Each page is generated as static HTML to ensure optimal crawlability and performance.</p>
+`
+  });
+
+  writeFile(
+    path.join(
+      PUBLIC_DIR,
+      "sites",
+      branch.slug,
+      category.slug,
+      site.slug,
+      "index.html"
+    ),
+    html
+  );
+});
+
+console.log("✅ Static HTML pages generated successfully");
