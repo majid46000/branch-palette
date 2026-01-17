@@ -30,15 +30,17 @@ jobs:
       - name: Generate static HTML pages
         run: node scripts/generate-pages.js
 
-      - name: Commit generated site
+      - name: Commit generated site (force dist)
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add dist
+
+          git add -f dist
+
           if git diff --cached --quiet; then
-            echo "No changes"
+            echo "No changes to commit"
           else
-            git commit -m "auto: generate static site"
+            git commit -m "auto: generate static HTML site"
             git push
           fi
 
