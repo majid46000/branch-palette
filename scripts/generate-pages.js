@@ -1,148 +1,123 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import data from "../src/data/generated.json" assert { type: "json" };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const BASE = "/branch-palette";
 const DIST = path.join(__dirname, "../dist");
-const DATA = JSON.parse(
-  fs.readFileSync(path.join(__dirname, "../src/data/generated.json"), "utf8")
-);
 
-fs.rmSync(DIST, { recursive: true, force: true });
-fs.mkdirSync(DIST, { recursive: true });
+const ensureDir = (p) => {
+  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+};
 
-const baseTemplate = ({ title, description, content, links }) => `
+const pageTemplate = ({ title, description, content, links }) => `
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>${title}</title>
-<meta name="description" content="${description}" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-
-<style>
-:root {
-  --bg: #0b0f1a;
-  --fg: #e5e7eb;
-  --card: #111827;
-}
-.light {
-  --bg:#ffffff;
-  --fg:#0f172a;
-  --card:#f1f5f9;
-}
-body {
-  margin:0;
-  font-family: system-ui;
-  background:var(--bg);
-  color:var(--fg);
-}
-header {
-  padding:2rem;
-  text-align:center;
-}
-.grid {
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-  gap:1.5rem;
-  padding:2rem;
-}
-.card {
-  background:var(--card);
-  padding:1.5rem;
-  border-radius:16px;
-  transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
-  transition:transform .4s;
-}
-.card:hover {
-  transform: perspective(1000px) rotateX(6deg) rotateY(-6deg);
-}
-a {
-  color:#38bdf8;
-  text-decoration:none;
-}
-.toggle {
-  position:fixed;
-  top:1rem;
-  right:1rem;
-}
-</style>
-
-<script>
-function toggleTheme(){
-  document.documentElement.classList.toggle("light")
-}
-</script>
+  <meta charset="UTF-8" />
+  <title>${title}</title>
+  <meta name="description" content="${description}" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui; background:#0b0b0f; color:#eaeaf0; padding:40px; }
+    a { color:#7dd3fc; text-decoration:none }
+    h1 { font-size:2.2rem }
+    p { line-height:1.7; max-width:900px }
+    ul { margin-top:30px }
+    li { margin:8px 0 }
+  </style>
 </head>
-
 <body>
-<button class="toggle" onclick="toggleTheme()">🌓</button>
-
-<header>
-<h1>${title}</h1>
-<p>${description}</p>
-</header>
-
-<section class="grid">
-${content}
-</section>
-
-<footer style="padding:2rem;text-align:center;opacity:.6">
-Static Knowledge Directory
-</footer>
-
+  <h1>${title}</h1>
+  <p>${description}</p>
+  <p>${content}</p>
+  <ul>
+    ${links.map(l => `<li><a href="${l.href}">${l.label}</a></li>`).join("")}
+  </ul>
 </body>
 </html>
 `;
 
-const pageCard = (title, text, url) => `
-<div class="card">
-<h3>${title}</h3>
-<p>${text}</p>
-<a href="${url}">Explore</a>
-</div>
-`;
+ensureDir(DIST);
 
-for (const branch of DATA.branches) {
+/* الصفحة الرئيسية */
+fs.writeFileSync(
+  path.join(DIST, "index.html"),
+  pageTemplate({
+    title: "Branch Palette – Large Knowledge Directory",
+    description: "A massive static directory with real content and internal structure.",
+    content:
+      "Branch Palette is a large-scale static knowledge structure built with real HTML pages. Each branch contains categories and each category contains multiple content-rich pages designed for search engines.",
+    links: data.branches.map(b => ({
+      href: `${BASE}/${b.slug}/`,
+      label: b.name
+    }))
+  })
+);
+
+/* الفروع */
+for (const branch of data.branches) {
   const branchDir = path.join(DIST, branch.slug);
-  fs.mkdirSync(branchDir, { recursive: true });
-
-  const cats = DATA.categories.filter(c => c.branchId === branch.id);
-
-  const cards = cats.map(c =>
-    pageCard(c.name, "In-depth curated knowledge.", `/${branch.slug}/${c.slug}/`)
-  ).join("");
+  ensureDir(branchDir);
 
   fs.writeFileSync(
     path.join(branchDir, "index.html"),
-    baseTemplate({
+    pageTemplate({
       title: branch.name,
-      description: `Explore ${branch.name} topics and structured resources.`,
-      content: cards
+      description: `Explore categories under ${branch.name}`,
+      content:
+        `${branch.name} contains multiple structured categories. Each category includes detailed pages with real descriptive content designed for discovery and indexing.`,
+      links: data.categories
+        .filter(c => c.branchId === branch.id)
+        .map(c => ({
+          href: `${BASE}/${branch.slug}/${c.slug}/`,
+          label: c.name
+        }))
+    })
+  );
+}
+
+/* الفئات */
+for (const cat of data.categories) {
+  const branch = data.branches.find(b => b.id === cat.branchId);
+  const catDir = path.join(DIST, branch.slug, cat.slug);
+  ensureDir(catDir);
+
+  fs.writeFileSync(
+    path.join(catDir, "index.html"),
+    pageTemplate({
+      title: cat.name,
+      description: `Detailed content pages for ${cat.name}`,
+      content:
+        `${cat.name} is a curated category containing multiple content pages. Each page expands on concepts, examples, and structured information with internal links.`,
+      links: data.sites
+        .filter(s => s.categoryId === cat.id)
+        .map(s => ({
+          href: `${BASE}/${branch.slug}/${cat.slug}/${s.slug}.html`,
+          label: s.name
+        }))
     })
   );
 
-  for (const cat of cats) {
-    const catDir = path.join(branchDir, cat.slug);
-    fs.mkdirSync(catDir, { recursive: true });
-
-    const sites = DATA.sites.filter(s => s.categoryId === cat.id);
-
-    const siteCards = sites.map(s =>
-      pageCard(s.name, "Curated long-form informational content.", "#")
-    ).join("");
-
+  /* الصفحات النهائية */
+  for (const site of data.sites.filter(s => s.categoryId === cat.id)) {
     fs.writeFileSync(
-      path.join(catDir, "index.html"),
-      baseTemplate({
-        title: `${cat.name} – ${branch.name}`,
-        description: `Authoritative content about ${cat.name}.`,
-        content: siteCards
+      path.join(catDir, `${site.slug}.html`),
+      pageTemplate({
+        title: site.name,
+        description: `In-depth page about ${site.name}`,
+        content:
+          `${site.name} is presented here with a full textual explanation. This page is part of a large static structure designed to provide genuine content depth, internal linking, and crawlable architecture.`,
+        links: [
+          { href: `${BASE}/${branch.slug}/${cat.slug}/`, label: "Back to category" },
+          { href: `${BASE}/${branch.slug}/`, label: "Back to branch" }
+        ]
       })
     );
   }
 }
 
-console.log("✅ Static pages generated");
+console.log("✅ Static pages generated successfully");
