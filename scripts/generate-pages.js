@@ -1,114 +1,148 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import data from "../src/data/generated.json" assert { type: "json" };
-import { BLOCKED_BRANCHES, BLOCKED_KEYWORDS } from "./blocked.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DIST_DIR = path.join(__dirname, "../dist");
+const DIST = path.join(__dirname, "../dist");
+const DATA = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "../src/data/generated.json"), "utf8")
+);
 
-const isBlocked = (text) => {
-  const t = text.toLowerCase();
-  return (
-    BLOCKED_BRANCHES.some(b => t.includes(b)) ||
-    BLOCKED_KEYWORDS.some(k => t.includes(k))
-  );
-};
+fs.rmSync(DIST, { recursive: true, force: true });
+fs.mkdirSync(DIST, { recursive: true });
 
-const ensureDir = (dir) => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-};
-
-const pageTemplate = ({ title, description, content }) => `
+const baseTemplate = ({ title, description, content, links }) => `
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
 <meta charset="UTF-8" />
 <title>${title}</title>
 <meta name="description" content="${description}" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+
+<style>
+:root {
+  --bg: #0b0f1a;
+  --fg: #e5e7eb;
+  --card: #111827;
+}
+.light {
+  --bg:#ffffff;
+  --fg:#0f172a;
+  --card:#f1f5f9;
+}
+body {
+  margin:0;
+  font-family: system-ui;
+  background:var(--bg);
+  color:var(--fg);
+}
+header {
+  padding:2rem;
+  text-align:center;
+}
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:1.5rem;
+  padding:2rem;
+}
+.card {
+  background:var(--card);
+  padding:1.5rem;
+  border-radius:16px;
+  transform: perspective(1000px) rotateX(0deg) rotateY(0deg);
+  transition:transform .4s;
+}
+.card:hover {
+  transform: perspective(1000px) rotateX(6deg) rotateY(-6deg);
+}
+a {
+  color:#38bdf8;
+  text-decoration:none;
+}
+.toggle {
+  position:fixed;
+  top:1rem;
+  right:1rem;
+}
+</style>
+
+<script>
+function toggleTheme(){
+  document.documentElement.classList.toggle("light")
+}
+</script>
 </head>
+
 <body>
-<main>
+<button class="toggle" onclick="toggleTheme()">🌓</button>
+
+<header>
 <h1>${title}</h1>
 <p>${description}</p>
+</header>
+
+<section class="grid">
 ${content}
-</main>
+</section>
+
+<footer style="padding:2rem;text-align:center;opacity:.6">
+Static Knowledge Directory
+</footer>
+
 </body>
 </html>
 `;
 
-ensureDir(DIST_DIR);
+const pageCard = (title, text, url) => `
+<div class="card">
+<h3>${title}</h3>
+<p>${text}</p>
+<a href="${url}">Explore</a>
+</div>
+`;
 
-/* ======================
-   توليد صفحات الفروع
-====================== */
-for (const branch of data.branches) {
-  if (isBlocked(branch.name)) continue;
+for (const branch of DATA.branches) {
+  const branchDir = path.join(DIST, branch.slug);
+  fs.mkdirSync(branchDir, { recursive: true });
 
-  const branchDir = path.join(DIST_DIR, branch.slug);
-  ensureDir(branchDir);
+  const cats = DATA.categories.filter(c => c.branchId === branch.id);
 
-  const categories = data.categories.filter(c => c.branchId === branch.id);
-
-  let content = `<section>`;
-  for (const cat of categories) {
-    content += `<article>
-      <h2>${cat.name}</h2>
-      <p>This category explores ${cat.name} within ${branch.name}. 
-      It provides structured, descriptive content intended for real users,
-      explaining concepts, use cases, and practical context.</p>
-    </article>`;
-  }
-  content += `</section>`;
+  const cards = cats.map(c =>
+    pageCard(c.name, "In-depth curated knowledge.", `/${branch.slug}/${c.slug}/`)
+  ).join("");
 
   fs.writeFileSync(
     path.join(branchDir, "index.html"),
-    pageTemplate({
-      title: `${branch.name} – Comprehensive Overview`,
-      description: `In-depth editorial content about ${branch.name}, structured for clarity and search engines.`,
-      content
+    baseTemplate({
+      title: branch.name,
+      description: `Explore ${branch.name} topics and structured resources.`,
+      content: cards
     })
   );
-}
 
-/* ======================
-   توليد صفحات التصنيفات
-====================== */
-for (const cat of data.categories) {
-  if (isBlocked(cat.name)) continue;
+  for (const cat of cats) {
+    const catDir = path.join(branchDir, cat.slug);
+    fs.mkdirSync(catDir, { recursive: true });
 
-  const branch = data.branches.find(b => b.id === cat.branchId);
-  if (!branch) continue;
+    const sites = DATA.sites.filter(s => s.categoryId === cat.id);
 
-  const catDir = path.join(DIST_DIR, branch.slug, cat.slug);
-  ensureDir(catDir);
+    const siteCards = sites.map(s =>
+      pageCard(s.name, "Curated long-form informational content.", "#")
+    ).join("");
 
-  const sites = data.sites.filter(s => s.categoryId === cat.id);
-
-  let content = `<section>`;
-  for (const site of sites) {
-    content += `<article>
-      <h3>${site.name}</h3>
-      <p>
-      ${site.name} is discussed here as an example within ${cat.name}.
-      The focus is on explanation, context, and understanding rather than linking.
-      This ensures the page provides real informational value.
-      </p>
-    </article>`;
+    fs.writeFileSync(
+      path.join(catDir, "index.html"),
+      baseTemplate({
+        title: `${cat.name} – ${branch.name}`,
+        description: `Authoritative content about ${cat.name}.`,
+        content: siteCards
+      })
+    );
   }
-  content += `</section>`;
-
-  fs.writeFileSync(
-    path.join(catDir, "index.html"),
-    pageTemplate({
-      title: `${cat.name} in ${branch.name}`,
-      description: `Editorial content explaining ${cat.name} as part of ${branch.name}.`,
-      content
-    })
-  );
 }
 
-console.log("✅ Static pages generated successfully");
+console.log("✅ Static pages generated");
