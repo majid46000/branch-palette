@@ -1,4 +1,4 @@
-name: Build & Generate & Deploy
+name: Build & Generate Static Pages & Deploy
 
 on:
   push:
@@ -6,12 +6,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,24 +21,31 @@ jobs:
         with:
           node-version: 20
 
-      - run: npm install
+      - name: Install dependencies
+        run: npm install
 
-      - name: Generate static site
-        run: |
-          rm -rf dist
-          node scripts/generate-data.js
-          node scripts/generate-pages.js
-          node scripts/generate-sitemap.js
+      - name: Generate data
+        run: node scripts/generate-data.js
 
-      - name: Verify output
-        run: |
-          ls -la dist
-          cat dist/index.html
+      - name: Generate static pages
+        run: node scripts/generate-pages.js
 
-      - uses: actions/configure-pages@v5
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
-      - uses: actions/deploy-pages@v4
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
