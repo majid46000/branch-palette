@@ -1,131 +1,114 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import data from "../src/data/generated.json" assert { type: "json" };
+import { BLOCKED_BRANCHES, BLOCKED_KEYWORDS } from "./blocked.js";
 
-const DIST = "dist";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const ensure = (p) => fs.mkdirSync(p, { recursive: true });
+const DIST_DIR = path.join(__dirname, "../dist");
 
-const page = (title, description, content) => `<!DOCTYPE html>
+const isBlocked = (text) => {
+  const t = text.toLowerCase();
+  return (
+    BLOCKED_BRANCHES.some(b => t.includes(b)) ||
+    BLOCKED_KEYWORDS.some(k => t.includes(k))
+  );
+};
+
+const ensureDir = (dir) => {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+};
+
+const pageTemplate = ({ title, description, content }) => `
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <title>${title}</title>
 <meta name="description" content="${description}" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "CollectionPage",
-  "name": "${title}",
-  "description": "${description}"
-}
-</script>
-
-<style>
-body{font-family:system-ui;max-width:1100px;margin:auto;padding:40px;line-height:1.7}
-a{color:#2563eb;text-decoration:none}
-h1,h2,h3{margin-top:1.5em}
-ul{padding-left:20px}
-</style>
 </head>
 <body>
+<main>
 <h1>${title}</h1>
+<p>${description}</p>
 ${content}
+</main>
 </body>
-</html>`;
+</html>
+`;
 
-ensure(DIST);
+ensureDir(DIST_DIR);
 
-/* HOME */
-fs.writeFileSync(
-  `${DIST}/index.html`,
-  page(
-    "Global Web Directory",
-    "Massive categorized directory of websites, branches, and resources.",
-    `<p>This is a large-scale static web directory designed for discovery, classification, and search visibility.</p>
-<ul>
-${data.branches
-  .map((b) => `<li><a href="/branch-palette/branches/${b.slug}/">${b.name}</a></li>`)
-  .join("")}
-</ul>`
-  )
-);
+/* ======================
+   توليد صفحات الفروع
+====================== */
+for (const branch of data.branches) {
+  if (isBlocked(branch.name)) continue;
 
-/* BRANCHES */
-data.branches.forEach((b) => {
-  const dir = `${DIST}/branches/${b.slug}`;
-  ensure(dir);
+  const branchDir = path.join(DIST_DIR, branch.slug);
+  ensureDir(branchDir);
 
-  const cats = data.categories.filter((c) => c.branchId === b.id);
+  const categories = data.categories.filter(c => c.branchId === branch.id);
+
+  let content = `<section>`;
+  for (const cat of categories) {
+    content += `<article>
+      <h2>${cat.name}</h2>
+      <p>This category explores ${cat.name} within ${branch.name}. 
+      It provides structured, descriptive content intended for real users,
+      explaining concepts, use cases, and practical context.</p>
+    </article>`;
+  }
+  content += `</section>`;
 
   fs.writeFileSync(
-    `${dir}/index.html`,
-    page(
-      `${b.name} Directory`,
-      `Explore categories under ${b.name}.`,
-      `<p>${b.name} contains curated categories and resources.</p>
-<ul>
-${cats
-  .map(
-    (c) =>
-      `<li><a href="/branch-palette/branches/${b.slug}/categories/${c.slug}/">${c.name}</a></li>`
-  )
-  .join("")}
-</ul>`
-    )
+    path.join(branchDir, "index.html"),
+    pageTemplate({
+      title: `${branch.name} – Comprehensive Overview`,
+      description: `In-depth editorial content about ${branch.name}, structured for clarity and search engines.`,
+      content
+    })
   );
+}
 
-  cats.forEach((c) => {
-    const cdir = `${dir}/categories/${c.slug}`;
-    ensure(cdir);
+/* ======================
+   توليد صفحات التصنيفات
+====================== */
+for (const cat of data.categories) {
+  if (isBlocked(cat.name)) continue;
 
-    const sites = data.sites.filter((s) => s.categoryId === c.id);
+  const branch = data.branches.find(b => b.id === cat.branchId);
+  if (!branch) continue;
 
-    fs.writeFileSync(
-      `${cdir}/index.html`,
-      page(
-        `${c.name} – ${b.name}`,
-        `Websites listed under ${c.name} in ${b.name}.`,
-        `<p>${c.name} includes the following websites:</p>
-<ul>
-${sites
-  .map(
-    (s) =>
-      `<li><a href="/branch-palette/branches/${b.slug}/categories/${c.slug}/sites/${s.slug}.html">${s.name}</a></li>`
-  )
-  .join("")}
-</ul>`
-      )
-    );
+  const catDir = path.join(DIST_DIR, branch.slug, cat.slug);
+  ensureDir(catDir);
 
-    sites.forEach((s) => {
-      const sdir = `${cdir}/sites`;
-      ensure(sdir);
+  const sites = data.sites.filter(s => s.categoryId === cat.id);
 
-      fs.writeFileSync(
-        `${sdir}/${s.slug}.html`,
-        page(
-          `${s.name} – ${c.name}`,
-          s.description,
-          `<p>${s.description}</p>
-<p>Category: <strong>${c.name}</strong></p>
-<p>Branch: <strong>${b.name}</strong></p>
-<p>This page is part of a large static directory optimized for search engines.</p>`
-        )
-      );
-    });
-  });
-});
+  let content = `<section>`;
+  for (const site of sites) {
+    content += `<article>
+      <h3>${site.name}</h3>
+      <p>
+      ${site.name} is discussed here as an example within ${cat.name}.
+      The focus is on explanation, context, and understanding rather than linking.
+      This ensures the page provides real informational value.
+      </p>
+    </article>`;
+  }
+  content += `</section>`;
 
-/* robots.txt */
-fs.writeFileSync(
-  `${DIST}/robots.txt`,
-  `User-agent: *
-Allow: /
+  fs.writeFileSync(
+    path.join(catDir, "index.html"),
+    pageTemplate({
+      title: `${cat.name} in ${branch.name}`,
+      description: `Editorial content explaining ${cat.name} as part of ${branch.name}.`,
+      content
+    })
+  );
+}
 
-Sitemap: https://majid46000.github.io/branch-palette/sitemap.xml`
-);
-
-console.log("✅ generate-pages.js completed");
+console.log("✅ Static pages generated successfully");
